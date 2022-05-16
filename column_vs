@@ -1,0 +1,71 @@
+SELECT
+a.fd_datetime as fd_date,
+a.pu as fd_p_u,
+b.pu as fd_p_u_last_year
+FROM
+(SELECT fd_datetime, SUM(fd_p_u) as pu FROM ghostwar_bigquery.agg_in_app_purchases GROUP BY fd_datetime) as a
+INNER JOIN
+(SELECT DATE_ADD(fd_datetime, INTERVAL 1 YEAR) as fd_datetime, SUM(fd_p_u) as pu FROM ghostwar_bigquery.agg_in_app_purchases GROUP BY fd_datetime) as b
+ON a.fd_datetime = b.fd_datetime;
+
+
+WITH log_count AS (
+SELECT
+fd_datetime,
+COUNT(*) as fd_p_u
+FROM
+ghostwar_bigquery.log_user_in_app_purchases
+GROUP BY fd_datetime
+)
+SELECT
+a.fd_datetime as fd_date,
+a.pu as fd_p_u,
+b.pu as fd_p_u_last_year
+FROM
+(SELECT fd_datetime, SUM(fd_p_u) as pu FROM log_count GROUP BY fd_datetime) as a
+INNER JOIN
+(SELECT DATE_ADD(fd_datetime, INTERVAL 1 YEAR) as fd_datetime, SUM(fd_p_u) as pu FROM log_count GROUP BY fd_datetime) as b
+ON a.fd_datetime = b.fd_datetime;
+
+
+WITH log_count AS (
+SELECT
+	c.fd_datetime as fd_datetime,
+    c.fd_p_u as fd_p_u,
+    c.fd_revenue as fd_revenue,
+    d.fd_total as fd_total
+FROM
+(
+	SELECT
+		fd_datetime,
+		COUNT(*) as fd_p_u,
+		SUM(fd_price) as fd_revenue
+	FROM
+    (
+		SELECT
+		fd_datetime,
+        fd_member_i_d,
+		SUM(fd_price) as fd_price
+		FROM
+		ghostwar_bigquery.log_user_in_app_purchases
+		GROUP BY fd_datetime, fd_member_i_d
+	) as e
+    GROUP BY fd_datetime
+) as c
+INNER JOIN
+(SELECT fd_datetime, SUM(fd_total) as fd_total FROM ghostwar_bigquery.agg_user_sessions GROUP BY fd_datetime) as d
+ON c.fd_datetime = d.fd_datetime
+)
+SELECT
+a.fd_datetime as fd_date,
+a.pu as fd_p_u,
+a.total as fd_total,
+ROUND(a.revenue) as fd_revenue,
+b.pu as fd_p_u_last_year,
+b.total as fd_total_last_year,
+ROUND(b.revenue) as fd_revenue_last_year
+FROM
+(SELECT fd_datetime, SUM(fd_p_u) as pu, SUM(fd_revenue) as revenue, fd_total as total FROM log_count GROUP BY fd_datetime) as a
+INNER JOIN
+(SELECT DATE_ADD(fd_datetime, INTERVAL 1 YEAR) as fd_datetime, SUM(fd_p_u) as pu, SUM(fd_revenue) as revenue, fd_total as total FROM log_count GROUP BY fd_datetime) as b
+ON a.fd_datetime = b.fd_datetime;
