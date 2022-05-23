@@ -1,0 +1,7 @@
+SELECT
+DATE_FORMAT(fd_datetime, '%Y') as fd_year,
+DATE_FORMAT(fd_datetime, '%V') as fd_week,
+MIN(fd_datetime) as fd_datetime,
+COUNT(*) as fd_pu
+FROM ghostwar_bigquery.log_user_in_app_purchases
+GROUP BY fd_year, fd_week;
